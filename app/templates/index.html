@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="text-center">
+    <h1 class="text-4xl font-bold text-gray-900 mb-4">
+        Генератор раздаточных материалов<br>
+        <span class="text-blue-600">с помощью ИИ</span>
+    </h1>
+    <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+        Создавайте рабочие листы, памятки и карточки за минуты.
+        Просто загрузите тему или план урока — ИИ сделает всё сам.
+    </p>
+
+    <div class="grid md:grid-cols-3 gap-8 mt-16 text-left">
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-2">📚 Любые форматы</h3>
+            <p class="text-gray-600">Рабочие листы, памятки, таблицы, карточки — подберем под этапы урока</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-2">🎯 Дифференциация</h3>
+            <p class="text-gray-600">Генерация заданий разного уровня сложности для каждого ученика</p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow">
+            <h3 class="font-bold text-lg mb-2">📄 Экспорт в PDF</h3>
+            <p class="text-gray-600">Готово к печати за секунду. Никакой ручной верстки</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
