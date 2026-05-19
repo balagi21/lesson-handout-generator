@@ -1,13 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import RedirectResponse
+from fastapi.exception_handlers import http_exception_handler
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 
 from .database import engine, Base
-from .routers import auth
+from .routers import auth, project
 from .config import settings
 
 @asynccontextmanager
@@ -29,6 +29,7 @@ app.add_middleware(
 
 # Подключаем роутеры
 app.include_router(auth.router)
+app.include_router(project.router)
 
 # Статика и шаблоны
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -40,22 +41,20 @@ async def session_middleware(request: Request, call_next):
     return response
 
 
+@app.exception_handler(StarletteHTTPException)
+async def custom_http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        return templates.TemplateResponse(
+            request=request,
+            name="404.html",
+            status_code=404
+        )
+    return await http_exception_handler(request, exc)
+
+
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="index.html"
-    )
-
-
-@app.get("/dashboard")
-async def dashboard(request: Request):
-    """Заглушка для дашборда (пока просто проверка авторизации)"""
-    if "user_id" not in request.session:
-        return RedirectResponse(url="/auth/login", status_code=303)
-
-    return templates.TemplateResponse(
-        request=request,
-        name="dashboard.html",
-        context={"username": request.session.get("username")}
     )

@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}{{ project.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">{{ project.name }}</h1>
+        <a href="/projects/" class="text-gray-600 hover:text-gray-800">← Назад к урокам</a>
+    </div>
+
+<!-- Шаг 1 — показываем только если нет этапов -->
+{% if not has_stages %}
+<div id="step1" class="mb-8">
+    <h2 class="text-xl font-semibold mb-4">Шаг 1. Как создаём план урока?</h2>
+
+    <div class="flex gap-6 mb-6">
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="plan_mode" value="prompt" checked>
+            <span class="text-lg">✏️ По описанию</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="plan_mode" value="file">
+            <span class="text-lg">📄 Из файла</span>
+        </label>
+    </div>
+
+    <div id="prompt-mode" class="border rounded-lg p-4">
+        <label class="block mb-2 font-medium">Опишите урок</label>
+        <textarea id="prompt-text" rows="5" class="w-full px-3 py-2 border rounded-lg"
+                  placeholder="Пример: Урок математики в 5 классе по теме «Обыкновенные дроби»..."></textarea>
+    </div>
+
+    <div id="file-mode" class="border rounded-lg p-4 hidden">
+        <label class="block mb-2 font-medium">Загрузите план урока</label>
+        <input type="file" id="plan-file" accept=".pdf,.docx,.txt" class="w-full">
+    </div>
+
+    <button id="generatePlanBtn" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+        Сгенерировать план
+    </button>
+
+    <div id="step1-error" class="mt-3 text-red-600 hidden"></div>
+    <div id="step1-loading" class="mt-3 text-blue-600 hidden">⏳ Генерация плана...</div>
+</div>
+{% endif %}
+
+<!-- Шаг 2 — показываем если есть этапы ИЛИ после генерации (JS покажет) -->
+<div id="step2" {% if not has_stages %}class="hidden"{% endif %}>
+    <hr class="my-6">
+    <h2 class="text-xl font-semibold mb-4">Шаг 2. Настройка этапов урока</h2>
+
+    <div id="stage-list-container">
+        {% if has_stages %}
+            {# Загружаем список этапов через HTMX #}
+            <div hx-get="/projects/{{ project.id }}/stage-list" hx-trigger="load" hx-swap="outerHTML">
+                Загрузка этапов...
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="mt-4">
+        <button id="addStageBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+            + Добавить этап
+        </button>
+    </div>
+</div>
+
+<script>
+    const projectId = {{ project.id }};
+
+    // Переключение режимов
+    const radioPrompt = document.querySelector('input[value="prompt"]');
+    const radioFile = document.querySelector('input[value="file"]');
+    const promptMode = document.getElementById('prompt-mode');
+    const fileMode = document.getElementById('file-mode');
+
+    function toggleMode() {
+        if (radioPrompt.checked) {
+            promptMode.classList.remove('hidden');
+            fileMode.classList.add('hidden');
+        } else {
+            promptMode.classList.add('hidden');
+            fileMode.classList.remove('hidden');
+        }
+    }
+
+    radioPrompt.addEventListener('change', toggleMode);
+    radioFile.addEventListener('change', toggleMode);
+
+    // Генерация плана
+    document.getElementById('generatePlanBtn').addEventListener('click', async function() {
+        const step1Error = document.getElementById('step1-error');
+        const step1Loading = document.getElementById('step1-loading');
+
+        step1Error.classList.add('hidden');
+        step1Loading.classList.remove('hidden');
+
+        try {
+            let formData;
+            let url;
+
+            if (radioPrompt.checked) {
+                const prompt = document.getElementById('prompt-text').value.trim();
+                if (!prompt) throw new Error('Пожалуйста, опишите урок');
+                url = `/projects/${projectId}/generate-plan-from-prompt`;
+                formData = JSON.stringify({ prompt: prompt });
+            } else {
+                const fileInput = document.getElementById('plan-file');
+                const file = fileInput.files[0];
+                if (!file) throw new Error('Пожалуйста, выберите файл');
+                url = `/projects/${projectId}/generate-plan-from-file`;
+                formData = new FormData();
+                formData.append('file', file);
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: radioPrompt.checked ? { 'Content-Type': 'application/json' } : undefined,
+                body: formData
+            });
+
+            if (!response.ok) throw new Error('Ошибка при генерации');
+
+            const html = await response.text();
+            document.getElementById('stage-list-container').innerHTML = html;
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+
+        } catch (err) {
+            step1Error.textContent = err.message;
+            step1Error.classList.remove('hidden');
+        } finally {
+            step1Loading.classList.add('hidden');
+        }
+    });
+
+    // Добавление этапа
+    document.getElementById('addStageBtn')?.addEventListener('click', async () => {
+        const response = await fetch(`/projects/${projectId}/handouts/create`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                name: 'Новый этап',
+                description: 'Описание этапа'
+            })
+        });
+        const html = await response.text();
+        document.getElementById('stage-list-container').innerHTML = html;
+    });
+</script>
+{% endblock %}

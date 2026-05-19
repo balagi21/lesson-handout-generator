@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Генератор раздаточных материалов{% endblock %}</title>
-    <link id="favicon" rel="icon" type="image/x-icon" href="static/images/favicon.ico">
+    <link id="favicon" rel="icon" type="image/x-icon" href="/static/images/favicon.ico">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     {% block extra_head %}{% endblock %}
@@ -19,7 +19,7 @@
                 {% if request.session.user_id %}
                     <div class="flex items-center space-x-4">
                         <span class="text-gray-600">👋 {{ request.session.username }}</span>
-                        <a href="/dashboard" class="text-gray-600 hover:text-gray-800">Дашборд</a>
+                        <a href="/projects/" class="text-gray-600 hover:text-gray-800">Мои уроки</a>
                         <a href="/auth/logout" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Выйти</a>
                     </div>
                 {% else %}

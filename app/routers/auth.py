@@ -119,7 +119,7 @@ async def login(
     request.session["username"] = user.username
 
     # Перенаправляем на дашборд
-    return RedirectResponse(url="/dashboard", status_code=303)
+    return RedirectResponse(url="/projects/", status_code=303)
 
 
 @router.get("/logout")
