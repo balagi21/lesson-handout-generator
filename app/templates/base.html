@@ -15,10 +15,18 @@
                 <div class="flex items-center">
                     <a href="/" class="text-xl font-bold text-blue-600">HandoutGen</a>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <a href="/auth/login" class="text-gray-600 hover:text-gray-800">Вход</a>
-                    <a href="/auth/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Регистрация</a>
-                </div>
+                {% if request.session.user_id %}
+                    <div class="flex items-center space-x-4">
+                        <span class="text-gray-600">👋 {{ request.session.username }}</span>
+                        <a href="/dashboard" class="text-gray-600 hover:text-gray-800">Дашборд</a>
+                        <a href="/auth/logout" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Выйти</a>
+                    </div>
+                {% else %}
+                    <div class="flex items-center space-x-4">
+                        <a href="/auth/login" class="text-gray-600 hover:text-gray-800">Вход</a>
+                        <a href="/auth/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Регистрация</a>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </nav>

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from ..database import get_db
 from ..models.user import User
-from ..utils.password import hash_password
+from ..utils.password import hash_password, verify_password
 from ..utils.const import PASSWORD_MAX_LENGTH
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -92,3 +92,38 @@ async def login_page(request: Request):
         name="login.html",
         context={"error": None}
     )
+
+
+@router.post("/login")
+async def login(
+        request: Request,
+        username: str = Form(...),
+        password: str = Form(...),
+        db: AsyncSession = Depends(get_db)
+):
+    """Обработка входа"""
+
+    # Ищем пользователя
+    result = await db.execute(select(User).where(User.username == username))
+    user = result.scalar_one_or_none()
+
+    if not user or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context={"error": "Неверное имя пользователя или пароль"}
+        )
+
+    # Сохраняем ID пользователя в сессии
+    request.session["user_id"] = user.id
+    request.session["username"] = user.username
+
+    # Перенаправляем на дашборд
+    return RedirectResponse(url="/dashboard", status_code=303)
+
+
+@router.get("/logout")
+async def logout(request: Request):
+    """Выход из системы"""
+    request.session.clear()
+    return RedirectResponse(url="/", status_code=303)
