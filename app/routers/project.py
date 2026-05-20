@@ -8,10 +8,13 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, UTC
 
+from ..services.llm.schemas import Stage
+from ..services.llm import llm_gigachat
 from ..database import get_db
 from ..models.project import Project
 from ..models.user import User
 from ..models.handout import Handout
+
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 templates = Jinja2Templates(directory="app/templates")
@@ -191,25 +194,13 @@ async def generate_plan_from_prompt(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    # Заглушка: данные из промпта (в реальности вызов GigaChat)
-    # Извлекаем предмет, класс, тему из промпта (заглушка)
-    subject = "Математика"
-    grade = "5"
-    topic = "Обыкновенные дроби"
-
-    stages_data = [
-        {"name": "Организационный момент", "description": "Приветствие, проверка готовности к уроку"},
-        {"name": "Актуализация знаний", "description": "Повторение предыдущего материала, вопросы"},
-        {"name": "Объяснение новой темы", "description": f"Изучение темы: {topic}"},
-        {"name": "Закрепление", "description": "Практические задания, работа в группах"},
-        {"name": "Рефлексия", "description": "Подведение итогов, вопросы ученикам"}
-    ]
+    llm_result = llm_gigachat.generate_plan_from_prompt(data.prompt)
 
     # Сохраняем метаданные в context_json проекта
     context = project.context_json or {}
-    context["subject"] = subject
-    context["grade"] = grade
-    context["topic"] = topic
+    context["subject"] = llm_result.subject
+    context["grade"] = llm_result.grade
+    context["topic"] = llm_result.topic
     context["generated_from"] = "prompt"
     project.context_json = context
     await db.commit()
@@ -220,12 +211,12 @@ async def generate_plan_from_prompt(
     )
 
     # Сохраняем новые этапы
-    for idx, stage in enumerate(stages_data):
+    for idx, stage in enumerate(llm_result.stages):
         handout = Handout(
             project_id=project_id,
             stage_order=idx,
-            stage_name=stage["name"],
-            stage_description=stage["description"],
+            stage_name=stage.name,
+            stage_description=stage.description,
             handout_type="work_sheet",
             status="pending"
         )
