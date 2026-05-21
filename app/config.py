@@ -6,7 +6,6 @@ class Settings(BaseSettings):
     secret_key: str
 
     gigachat_api_key: str
-    gigachat_api_url: str
 
     class Config:
         env_file = ".env"
