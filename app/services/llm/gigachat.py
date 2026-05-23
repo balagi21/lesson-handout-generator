@@ -5,7 +5,8 @@ from gigachat import GigaChat
 from gigachat.models import Chat, Messages, MessagesRole
 from .base import BaseLLMProvider
 from .schemas import PlanGenerationResult, HandoutGenerationResult, HandoutType
-from .prompts import SYSTEM_PROMPT_PLAN_FROM_PROMPT
+from .prompts import SYSTEM_PROMPT_PLAN_FROM_PROMPT, SYSTEM_PROMPT_CREATE_HANDOUT, \
+                     USER_PROMPT_CREATE_HANDOUT_TEMPLATE
 
 
 class GigaChatProvider(BaseLLMProvider):
@@ -50,17 +51,24 @@ class GigaChatProvider(BaseLLMProvider):
 
     def generate_handout(
             self,
-            stage_name: str,
-            stage_description: str,
-            handout_type: HandoutType,
             subject: str,
             grade: str,
             topic: str,
-            additional_instructions: Optional[str] = None
+            handout_type: HandoutType,
+            description: str
     ) -> HandoutGenerationResult:
-        # TODO: реальный вызов GigaChat API
-        content = ""
-        return HandoutGenerationResult(content=content, tokens_used=150)
+        response = self._client.chat(Chat(messages=[
+            Messages(role=MessagesRole.SYSTEM, content=SYSTEM_PROMPT_CREATE_HANDOUT),
+            Messages(role=MessagesRole.USER, content=USER_PROMPT_CREATE_HANDOUT_TEMPLATE.format(
+                subject=subject,
+                grade=grade,
+                topic=topic,
+                handout_type=handout_type,
+                description=description
+            ))
+        ]))
+        content = response.choices[0].message.content
+        return HandoutGenerationResult(content=content)
 
     async def extract_metadata(self, text: str) -> dict:
         # TODO: реальный вызов

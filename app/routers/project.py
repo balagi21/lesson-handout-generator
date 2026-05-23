@@ -23,15 +23,18 @@ templates = Jinja2Templates(directory="app/templates")
 class GeneratePlanPromptRequest(BaseModel):
     prompt: str
 
+
 class GeneratePlanResponse(BaseModel):
     stages: list
     subject: str
     grade: str
     topic: str
 
+
 class ReorderRequest(BaseModel):
     handout_id: int
     new_order: int
+
 
 class UpdateStageRequest(BaseModel):
     name: str
@@ -424,10 +427,17 @@ async def generate_handout_content(
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
 
-    result = await db.execute(
+    db_result = await db.execute(select(Project).where(Project.id == project_id))
+    project_info = db_result.scalar_one_or_none()
+    if not project_info:
+        raise HTTPException(status_code=404, detail="Project not found")
+    if project_info.user_id != user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    db_result = await db.execute(
         select(Handout).where(Handout.id == handout_id, Handout.project_id == project_id)
     )
-    handout = result.scalar_one_or_none()
+    handout = db_result.scalar_one_or_none()
     if not handout:
         raise HTTPException(status_code=404, detail="Handout not found")
 
@@ -435,35 +445,20 @@ async def generate_handout_content(
     handout.status = "generating"
     await db.commit()
 
-    # TODO: Здесь будет реальный вызов GigaChat
-    # Пока заглушка
-    import asyncio
-    await asyncio.sleep(1.5)
+    llm_response = llm_gigachat.generate_handout(
+        subject=project_info.context_json["subject"],
+        grade=project_info.context_json["grade"],
+        topic=project_info.context_json["topic"],
+        handout_type=handout.handout_type,
+        description=handout.stage_description
+    )
 
-    mock_content = f"""# {handout.stage_name}
-
-{handout.stage_description or 'Описание этапа урока'}
-
-## Задания
-
-1. Первое задание по теме
-2. Второе задание для закрепления
-3. Творческое задание (по желанию)
-
-## Ответы для учителя
-
-- Задание 1: ответ А
-- Задание 2: ответ Б
-
---- 
-*Тип раздатки: {handout.handout_type}*"""
-
-    handout.content = mock_content
+    handout.content = llm_response.content
     handout.status = "ready"
     handout.generated_at = datetime.now(UTC)
     await db.commit()
 
-    return {"status": "ok", "content": mock_content}
+    return {"status": "ok", "content": llm_response.content}
 
 
 @router.get("/{project_id}/handouts/{handout_id}/content")

@@ -13,8 +13,8 @@ class GenerationLog(Base):
 
     # Детали запроса
     request_type = Column(String(50), nullable=False)  # stage_split, handout_generate, free_generate
-    prompt_preview = Column(Text, nullable=True)  # Превью промпта (первые 200 символов)
-    response_preview = Column(Text, nullable=True)  # Превью ответа
+    prompt = Column(Text, nullable=True)
+    response = Column(Text, nullable=True)
 
     # Статус
     success = Column(Integer, default=0)  # 0 - false, 1 - true

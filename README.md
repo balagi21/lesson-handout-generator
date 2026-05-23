@@ -10,6 +10,21 @@
 4. По запросу скрипта, ввести ключ API GigaChat
 5. Сервис будет доступен по адресу: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 
+## Разработка и локальный запуск без Docker
+
+1. Создать и активировать виртуальное окружение
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+2. Настроить переменные окружения: скопировать файл *.env.example* как *.env* и заполнить параметры
+    - **SECRET_KEY**: строка из 64 символов, получить командой *openssl rand -hex 32*
+	- **GIGACHAT_API_KEY**: API ключ GigaChat
+3. Запустить сервер командой *fastapi dev app/main.py*
+
 ## Возможности
 
 TBD

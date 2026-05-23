@@ -35,13 +35,11 @@ class BaseLLMProvider(ABC):
     @abstractmethod
     def generate_handout(
             self,
-            stage_name: str,
-            stage_description: str,
-            handout_type: HandoutType,
             subject: str,
             grade: str,
             topic: str,
-            additional_instructions: Optional[str] = None
+            handout_type: HandoutType,
+            description: str
     ) -> HandoutGenerationResult:
         """Генерация раздаточного материала для этапа"""
         pass
