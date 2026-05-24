@@ -498,9 +498,6 @@ async def get_stage_list_html(project_id: int, user_id: int, db: AsyncSession, r
     )
     project = result.scalar_one_or_none()
 
-    from fastapi.templating import Jinja2Templates
-    templates = Jinja2Templates(directory="app/templates")
-
     return templates.TemplateResponse(
         request=request,
         name="_stage_list.html",

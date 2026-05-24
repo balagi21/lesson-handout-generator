@@ -10,6 +10,7 @@ from .database import engine, Base
 from .routers import auth, project
 from .config import settings
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
@@ -34,6 +35,7 @@ app.include_router(project.router)
 # Статика и шаблоны
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
 
 @app.middleware("http")
 async def session_middleware(request: Request, call_next):
