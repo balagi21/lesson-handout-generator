@@ -15,6 +15,7 @@ class HandoutType(str, Enum):
 class Stage(BaseModel):
     name: str
     description: str
+    handout_type: HandoutType
 
 
 class PlanGenerationResult(BaseModel):

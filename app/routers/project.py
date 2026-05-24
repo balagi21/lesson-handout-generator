@@ -220,7 +220,7 @@ async def generate_plan_from_prompt(
             stage_order=idx,
             stage_name=stage.name,
             stage_description=stage.description,
-            handout_type="work_sheet",
+            handout_type=stage.handout_type,
             status="pending"
         )
         db.add(handout)
