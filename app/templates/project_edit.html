@@ -15,76 +15,10 @@
 </div>
 
 <script>
-    const projectId = {{ project.id }};
-
-    // Переключение режимов
-    const radioPrompt = document.querySelector('input[value="prompt"]');
-    const radioFile = document.querySelector('input[value="file"]');
-    const promptMode = document.getElementById('prompt-mode');
-    const fileMode = document.getElementById('file-mode');
-
-    if (radioPrompt && radioFile && promptMode && fileMode) {
-        function toggleMode() {
-            if (radioPrompt.checked) {
-                promptMode.classList.remove('hidden');
-                fileMode.classList.add('hidden');
-            } else {
-                promptMode.classList.add('hidden');
-                fileMode.classList.remove('hidden');
-            }
-        }
-
-        radioPrompt.addEventListener('change', toggleMode);
-        radioFile.addEventListener('change', toggleMode);
-    };
-
-    // Генерация плана
-    const generatePlanBtn = document.getElementById('generatePlanBtn');
-    if (generatePlanBtn) {
-        generatePlanBtn.addEventListener('click', async function() {
-            const step1Error = document.getElementById('step1-error');
-            const step1Loading = document.getElementById('step1-loading');
-
-            step1Error.classList.add('hidden');
-            step1Loading.classList.remove('hidden');
-
-            try {
-                let formData;
-                let url;
-
-                if (radioPrompt.checked) {
-                    const prompt = document.getElementById('prompt-text').value.trim();
-                    if (!prompt) throw new Error('Пожалуйста, опишите урок');
-                    url = `/projects/${projectId}/generate-plan-from-prompt`;
-                    formData = JSON.stringify({ prompt: prompt });
-                } else {
-                    const fileInput = document.getElementById('plan-file');
-                    const file = fileInput.files[0];
-                    if (!file) throw new Error('Пожалуйста, выберите файл');
-                    url = `/projects/${projectId}/generate-plan-from-file`;
-                    formData = new FormData();
-                    formData.append('file', file);
-                }
-
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: radioPrompt.checked ? { 'Content-Type': 'application/json' } : undefined,
-                    body: formData
-                });
-
-                if (!response.ok) throw new Error('Ошибка при генерации');
-
-                const html = await response.text();
-                document.getElementById('project_edit_content').innerHTML = html;
-
-            } catch (err) {
-                step1Error.textContent = err.message;
-                step1Error.classList.remove('hidden');
-            } finally {
-                step1Loading.classList.add('hidden');
-            }
-        });
-    };
+    document.getElementById('plan-file')?.addEventListener('change', function(e) {
+        const fileName = e.target.files[0]?.name || 'Файл не выбран';
+        document.getElementById('file-name').textContent = fileName;
+    });
 
     // Добавление этапа
     document.getElementById('addStageBtn')?.addEventListener('click', async () => {

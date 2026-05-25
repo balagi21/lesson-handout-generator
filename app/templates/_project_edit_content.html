@@ -2,36 +2,63 @@
 {% if project.status == 'plan_generation' %}
 <div id="step1" class="mb-8">
     <hr class="my-6">
-    <h2 class="text-xl font-semibold mb-4">Шаг 1. Как создаём план урока?</h2>
+    <h2 class="text-xl font-semibold mb-4">Шаг 1. Создаём план урока</h2>
 
-    <div class="flex gap-6 mb-6">
-        <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="plan_mode" value="prompt" checked>
-            <span class="text-lg">✏️ По описанию</span>
-        </label>
-        <label class="flex items-center gap-2 cursor-pointer">
-            <input type="radio" name="plan_mode" value="file">
-            <span class="text-lg">📄 Из файла</span>
-        </label>
+    <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-blue-800 font-medium mb-2">📝 Как это работает</p>
+        <p class="text-blue-700 text-sm mb-2">
+            Вы можете описать урок словами — или загрузить готовый план. А можно и то, и другое вместе.
+        </p>
+        <ul class="text-blue-700 text-sm list-disc list-inside space-y-1">
+            <li><span class="font-medium">Опишите урок</span> — укажите предмет, класс и тему.
+                Чем подробнее описание, тем точнее будет результат.</li>
+            <li><span class="font-medium">Загрузите файл</span> — подойдёт план урока или конспект
+                в формате PDF, DOCX или TXT.</li>
+            <li><span class="font-medium">Совместите оба способа</span> — например, загрузите план и добавьте
+                уточнения в описании.</li>
+        </ul>
     </div>
 
-    <div id="prompt-mode" class="border rounded-lg p-4">
-        <label class="block mb-2 font-medium">Опишите урок</label>
-        <textarea id="prompt-text" rows="5" class="w-full px-3 py-2 border rounded-lg"
-                  placeholder="Пример: Урок математики в 5 классе по теме «Обыкновенные дроби»..."></textarea>
-    </div>
+    <form id="generatePlanForm"
+              hx-post="/projects/{{ project.id }}/generate-plan"
+              hx-target="#project_edit_content"
+              hx-swap="innerHTML"
+              enctype="multipart/form-data">
+        <div class="border rounded-lg p-4">
+            <label class="block font-medium mb-2">Опишите урок</label>
 
-    <div id="file-mode" class="border rounded-lg p-4 hidden">
-        <label class="block mb-2 font-medium">Загрузите план урока</label>
-        <input type="file" id="plan-file" accept=".pdf,.docx,.txt" class="w-full">
-    </div>
 
-    <button id="generatePlanBtn" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-        Сгенерировать план
-    </button>
+                <textarea
+                        class="w-full px-2 py-1 border rounded"
+                        name="prompt"
+                        rows="5"
+                        placeholder="Пример: Урок математики в 5 классе по теме «Обыкновенные дроби»"></textarea>
+                <p class="text-xs text-gray-500 mt-1">
+                    Укажите предмет, класс, тему и ключевые цели урока. Чем подробнее — тем лучше.
+                </p>
+        </div>
+        <br>
+        <div class="border rounded-lg p-4">
+                <label class="block font-medium mb-2">Загрузите файл с планом урока</label>
+                <div class="relative">
+                    <input type="file" id="plan-file" name="file" accept=".pdf,.docx,.txt" class="hidden">
+                    <label for="plan-file" class="inline-flex items-center px-3 py-1 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 cursor-pointer transition">
+                        📎 Выбрать файл
+                    </label>
+                    <span id="file-name" class="ml-3 text-sm text-gray-500">Файл не выбран</span>
+                    <p class="text-xs text-gray-500 mt-1">
+                        Поддерживаются форматы: PDF, DOCX, TXT
+                    </p>
+                </div>
+        </div>
+        <br>
+        <button
+                        class="ml-2 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        type="submit">Сгенерировать план</button>
 
-    <div id="step1-error" class="mt-3 text-red-600 hidden"></div>
-    <div id="step1-loading" class="mt-3 text-blue-600 hidden">⏳ Генерация плана...</div>
+        <div id="step1-error" class="mt-3 text-red-600 hidden"></div>
+        <div id="step1-loading" class="mt-3 text-blue-600 hidden">⏳ Генерация плана...</div>
+    </form>
 </div>
 {% endif %}
 

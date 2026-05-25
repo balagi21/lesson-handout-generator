@@ -196,16 +196,23 @@ async def delete_project(
     return RedirectResponse(url="/projects/", status_code=303)
 
 
-@router.post("/{project_id}/generate-plan-from-prompt")
-async def generate_plan_from_prompt(
+@router.post("/{project_id}/generate-plan")
+async def generate_plan(
         project_id: int,
         request: Request,
-        data: GeneratePlanPromptRequest,
+        prompt: str = Form(None),
+        file: UploadFile = File(None),
         db: AsyncSession = Depends(get_db)
 ):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+    if not prompt and not file:
+        raise HTTPException(
+            status_code=400,
+            detail="Укажите описание урока или загрузите файл с планом"
+        )
 
     result = await db.execute(
         select(Project).where(Project.id == project_id, Project.user_id == user_id)
@@ -214,7 +221,7 @@ async def generate_plan_from_prompt(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    llm_result = llm_gigachat.generate_plan_from_prompt(data.prompt)
+    llm_result = llm_gigachat.generate_plan_from_prompt(prompt)
 
     # Сохраняем метаданные в context_json проекта
     context = project.context_json or {}
@@ -246,69 +253,6 @@ async def generate_plan_from_prompt(
     await db.commit()
 
     return await get_project_edit_content_html(project_id, user_id, db, request)
-
-
-@router.post("/{project_id}/generate-plan-from-file")
-async def generate_plan_from_file(
-        project_id: int,
-        request: Request,
-        file: UploadFile = File(...),
-        db: AsyncSession = Depends(get_db)
-):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
-
-    # Заглушка: данные из файла
-    subject = "Русский язык"
-    grade = "6"
-    topic = "Имя существительное: падежи и склонения"
-
-    stages_data = [
-        {"name": "Введение в тему", "description": "Постановка целей и задач урока"},
-        {"name": "Теоретическая часть", "description": "Лекция с презентацией, основные определения"},
-        {"name": "Практическая работа", "description": "Решение задач у доски и в тетрадях"},
-        {"name": "Проверка понимания", "description": "Самостоятельная работа с взаимопроверкой"},
-        {"name": "Домашнее задание", "description": "Объяснение домашнего задания, комментарии"}
-    ]
-
-    # Сохраняем метаданные
-    context = project.context_json or {}
-    context["subject"] = subject
-    context["grade"] = grade
-    context["topic"] = topic
-    context["generated_from"] = "file"
-    context["original_filename"] = file.filename
-    project.context_json = context
-    await db.commit()
-
-    # Удаляем существующие этапы
-    await db.execute(
-        delete(Handout).where(Handout.project_id == project_id)
-    )
-
-    # Сохраняем новые этапы
-    for idx, stage in enumerate(stages_data):
-        handout = Handout(
-            project_id=project_id,
-            stage_order=idx,
-            stage_name=stage["name"],
-            stage_description=stage["description"],
-            handout_type="work_sheet",
-            status="pending"
-        )
-        db.add(handout)
-
-    await db.commit()
-
-    return await get_stage_list_html(project_id, user_id, db, request)
 
 
 @router.post("/{project_id}/handouts/reorder")
