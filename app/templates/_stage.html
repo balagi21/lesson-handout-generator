@@ -7,7 +7,6 @@
                            hx-post="/projects/{{ project.id }}/handouts/{{ handout.id }}/update"
                            hx-include="#handout-{{ handout.id }}"
                            hx-trigger="blur"
-                           hx-vals='{"name": "{{ handout.stage_name }}"}'
                            hx-target="#handout-{{ handout.id }}"
                            hx-swap="outerHTML"
                            class="stage-name w-full text-lg font-semibold mb-2 px-2 py-1 border rounded">

@@ -102,7 +102,11 @@
 
     document.addEventListener('all-handouts-generated', function() {
         document.getElementById('generateAllBtn').classList.add('hidden');
-        document.getElementById('toEditingBtn').classList.remove('hidden');
+        document.getElementById('exportBtn').classList.remove('hidden');
+    });
+
+    document.addEventListener('pdf-ready', function() {
+        document.getElementById('downloadPdf').classList.remove('hidden');
     });
 
 </script>

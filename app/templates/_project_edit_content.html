@@ -49,21 +49,26 @@
             + Добавить этап
         </button>
 
-        <button id="generateAllBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if all_handouts_generated %}hidden{% endif %}">
+        <button id="generateAllBtn"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if all_handouts_generated %}hidden{% endif %}">
             Сгенерировать все
         </button>
-        <button id="toEditingBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if not all_handouts_generated %}hidden{% endif %}">
-            Перейти к редактированию и экспорту
+        <button id="exportBtn"
+                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if not all_handouts_generated %}hidden{% endif %}"
+                hx-post="/projects/{{ project.id }}/export-pdf"
+                hx-target="#export-result"
+                ht-swap="innerHTML">
+            Экспортировать в PDF
         </button>
+
+        <a id="downloadPdf"
+           href="/projects/{{ project.id }}/download-pdf"
+                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 {% if not has_pdf %}hidden{% endif %}"
+        >
+            Скачать PDF
+        </a>
+
+        <div id="export-result"></div>
     </div>
-</div>
-{% endif %}
-
-{% if project.status == 'editing' %}
-<div id="step3">
-    <hr class="my-6">
-    <h2 class="text-xl font-semibold mb-4">Шаг 3. Редактирование и экспорт</h2>
-
-
 </div>
 {% endif %}

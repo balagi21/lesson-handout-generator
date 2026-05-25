@@ -1,5 +1,9 @@
+import markdown
+import weasyprint
+from io import BytesIO
+from urllib.parse import quote
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, File, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import Response, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, delete, update
@@ -11,6 +15,7 @@ from ..services.llm import llm_gigachat
 from ..database import get_db
 from ..models.project import Project, ProjectStatus
 from ..models.handout import Handout
+from ..models.export import ExportedPDF
 
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -19,13 +24,6 @@ templates = Jinja2Templates(directory="app/templates")
 
 class GeneratePlanPromptRequest(BaseModel):
     prompt: str
-
-
-class GeneratePlanResponse(BaseModel):
-    stages: list
-    subject: str
-    grade: str
-    topic: str
 
 
 class ReorderRequest(BaseModel):
@@ -131,6 +129,12 @@ async def edit_project(
     )
     handouts = handouts_result.scalars().all()
     all_handouts_generated = all(h.status == 'ready' for h in handouts)
+    has_pdf = False
+    if all_handouts_generated:
+        db_result = await db.execute(
+            select(ExportedPDF).where(ExportedPDF.project_id == project_id)
+        )
+        has_pdf = db_result.scalar_one_or_none() is not None
 
     # Получаем метаданные для шага 2 (если есть)
     subject = ""
@@ -151,6 +155,7 @@ async def edit_project(
             "topic": topic,
             "handouts": handouts,
             "all_handouts_generated": all_handouts_generated,
+            "has_pdf": has_pdf,
         }
     )
 
@@ -621,4 +626,107 @@ async def get_stage_list(
             "grade": grade,
             "topic": topic
         }
+    )
+
+
+@router.post("/{project_id}/export-pdf")
+async def export_pdf(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    db_result = await db.execute(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    )
+    project = db_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    db_result = await db.execute(
+        select(Handout)
+        .where(Handout.project_id == project_id)
+        .order_by(Handout.stage_order)
+    )
+    handouts = db_result.scalars().all()
+
+    all_markdown = ""
+    for handout in handouts:
+        all_markdown += f"# {handout.stage_name}\n\n{handout.content}\n\n---\n\n"
+
+    html_content = markdown.markdown(all_markdown, extensions=['tables', 'fenced_code'])
+
+    full_html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>{project.name}</title>
+        <style>
+            body {{ font-family: Arial, sans-serif; margin: 2cm; }}
+            h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; }}
+            h2 {{ color: #34495e; margin-top: 1.5em; }}
+            table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
+            th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
+            th {{ background-color: #f2f2f2; }}
+            code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; }}
+            pre {{ background-color: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }}
+        </style>
+    </head>
+    <body>
+        {html_content}
+    </body>
+    </html>
+    """
+
+    pdf_buffer = BytesIO()
+    weasyprint.HTML(string=full_html).write_pdf(pdf_buffer)
+    pdf_buffer.seek(0)
+    pdf_bytes = pdf_buffer.getvalue()
+
+    db_result = await db.execute(
+        select(ExportedPDF).where(ExportedPDF.project_id == project_id)
+    )
+    existing_pdf = db_result.scalar_one_or_none()
+
+    if existing_pdf:
+        existing_pdf.pdf_data = pdf_bytes
+        existing_pdf.updated_at = datetime.now(UTC)
+    else:
+        new_pdf = ExportedPDF(
+            project_id=project_id,
+            pdf_data=pdf_bytes
+        )
+        db.add(new_pdf)
+
+    await db.commit()
+
+    response = Response()
+    response.headers["HX-Trigger"] = "pdf-ready"
+    return response
+
+
+@router.get("/{project_id}/download-pdf")
+async def download_pdf(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    user_id = request.session.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    db_result = await db.execute(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    )
+    project = db_result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    db_result = await db.execute(
+        select(ExportedPDF).where(ExportedPDF.project_id == project_id)
+    )
+    existing_pdf = db_result.scalar_one_or_none()
+    if not existing_pdf:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return Response(
+        content=existing_pdf.pdf_data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={quote(project.name)}.pdf"}
     )
