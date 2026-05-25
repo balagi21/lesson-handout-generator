@@ -1,0 +1,69 @@
+<!-- Шаг 1 — показываем только если нет этапов -->
+{% if project.status == 'plan_generation' %}
+<div id="step1" class="mb-8">
+    <hr class="my-6">
+    <h2 class="text-xl font-semibold mb-4">Шаг 1. Как создаём план урока?</h2>
+
+    <div class="flex gap-6 mb-6">
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="plan_mode" value="prompt" checked>
+            <span class="text-lg">✏️ По описанию</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="plan_mode" value="file">
+            <span class="text-lg">📄 Из файла</span>
+        </label>
+    </div>
+
+    <div id="prompt-mode" class="border rounded-lg p-4">
+        <label class="block mb-2 font-medium">Опишите урок</label>
+        <textarea id="prompt-text" rows="5" class="w-full px-3 py-2 border rounded-lg"
+                  placeholder="Пример: Урок математики в 5 классе по теме «Обыкновенные дроби»..."></textarea>
+    </div>
+
+    <div id="file-mode" class="border rounded-lg p-4 hidden">
+        <label class="block mb-2 font-medium">Загрузите план урока</label>
+        <input type="file" id="plan-file" accept=".pdf,.docx,.txt" class="w-full">
+    </div>
+
+    <button id="generatePlanBtn" class="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+        Сгенерировать план
+    </button>
+
+    <div id="step1-error" class="mt-3 text-red-600 hidden"></div>
+    <div id="step1-loading" class="mt-3 text-blue-600 hidden">⏳ Генерация плана...</div>
+</div>
+{% endif %}
+
+{% if project.status == 'handout_generation' %}
+<div id="step2">
+    <hr class="my-6">
+    <h2 class="text-xl font-semibold mb-4">Шаг 2. Настройка этапов урока</h2>
+
+    <div id="stage-list-container">
+            {% include "_stage_list.html" with context %}
+    </div>
+
+    <div class="mt-4">
+        <button id="addStageBtn" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300">
+            + Добавить этап
+        </button>
+
+        <button id="generateAllBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if all_handouts_generated %}hidden{% endif %}">
+            Сгенерировать все
+        </button>
+        <button id="toEditingBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if not all_handouts_generated %}hidden{% endif %}">
+            Перейти к редактированию и экспорту
+        </button>
+    </div>
+</div>
+{% endif %}
+
+{% if project.status == 'editing' %}
+<div id="step3">
+    <hr class="my-6">
+    <h2 class="text-xl font-semibold mb-4">Шаг 3. Редактирование и экспорт</h2>
+
+
+</div>
+{% endif %}

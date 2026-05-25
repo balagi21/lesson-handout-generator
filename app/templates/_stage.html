@@ -1,0 +1,73 @@
+        <div class="border rounded-lg p-4" id="handout-{{ handout.id }}">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex-1">
+                    <input type="text"
+                           name="name"
+                           value="{{ handout.stage_name }}"
+                           hx-post="/projects/{{ project.id }}/handouts/{{ handout.id }}/update"
+                           hx-include="#handout-{{ handout.id }}"
+                           hx-trigger="blur"
+                           hx-vals='{"name": "{{ handout.stage_name }}"}'
+                           hx-target="#handout-{{ handout.id }}"
+                           hx-swap="outerHTML"
+                           class="stage-name w-full text-lg font-semibold mb-2 px-2 py-1 border rounded">
+                    <textarea
+                            name="description"
+                            hx-post="/projects/{{ project.id }}/handouts/{{ handout.id }}/update"
+                            hx-include="#handout-{{ handout.id }}"
+                            hx-trigger="blur"
+                            hx-target="#handout-{{ handout.id }}"
+                            hx-swap="outerHTML"
+                            class="stage-desc w-full px-2 py-1 border rounded" rows="2">{{ handout.stage_description or '' }}</textarea>
+                </div>
+                <div class="flex gap-1 ml-3">
+                    <button class="move-up-btn px-2 py-1 text-gray-500 hover:text-gray-700"
+                            hx-post="/projects/{{ project.id }}/handouts/reorder"
+                            hx-vals='{"orders": [{"handout_id": {{ handout.id }}, "new_order": {{ handout.stage_order - 1 }} }]}'
+                            hx-target="#stage-list-container"
+                            {% if is_first %}disabled style="opacity:50%"{% endif %}>↑</button>
+                    <button class="move-down-btn px-2 py-1 text-gray-500 hover:text-gray-700"
+                            hx-post="/projects/{{ project.id }}/handouts/reorder"
+                            hx-vals='{"orders": [{"handout_id": {{ handout.id }}, "new_order": {{ handout.stage_order + 1 }} }]}'
+                            hx-target="#stage-list-container"
+                            {% if is_last %}disabled style="opacity:50%"{% endif %}>↓</button>
+                    <button class="delete-stage-btn px-2 py-1 text-red-500 hover:text-red-700"
+                            hx-post="/projects/{{ project.id }}/handouts/delete"
+                            hx-vals='{"handout_id": {{ handout.id }}}'
+                            hx-target="#stage-list-container"
+                            hx-confirm="Удалить этот этап?">🗑️</button>
+                </div>
+            </div>
+            <div class="mt-3">
+                <select name="handout_type"
+                        class="handout-type px-2 py-1 border rounded"
+                        hx-post="/projects/{{ project.id }}/handouts/{{ handout.id }}/update"
+                        hx-include="#handout-{{ handout.id }}"
+                        hx-trigger="change"
+                        hx-target="#handout-{{ handout.id }}"
+                        hx-swap="outerHTML">
+                    <option value="work_sheet" {% if handout.handout_type == 'work_sheet' %}selected{% endif %}>📋 Рабочий лист</option>
+                    <option value="memo" {% if handout.handout_type == 'memo' %}selected{% endif %}>📖 Памятка</option>
+                    <option value="table" {% if handout.handout_type == 'table' %}selected{% endif %}>📊 Таблица</option>
+                    <option value="scheme" {% if handout.handout_type == 'scheme' %}selected{% endif %}>📐 Схема</option>
+                    <option value="reflection" {% if handout.handout_type == 'reflection' %}selected{% endif %}>💭 Рефлексия</option>
+                    <option value="cards" {% if handout.handout_type == 'cards' %}selected{% endif %}>🃏 Карточки</option>
+                </select>
+                <button class="generate-stage-btn ml-2 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                        hx-post="/projects/{{ project.id }}/handouts/{{ handout.id }}/generate"
+                        hx-target="#handout-{{ handout.id }}"
+                        hx-swap="outerHTML">
+                    ✨ Сгенерировать
+                </button>
+                <span class="stage-status ml-2 text-sm text-gray-500">
+                    {% if handout.status == 'ready' %}✅ Готово{% elif handout.status == 'generating' %}⏳ Генерация...{% else %}⏳ Ожидает{% endif %}
+                </span>
+            </div>
+            <div id="stage-preview-{{ handout.id }}" class="mt-2">
+                {% if handout.content %}
+                <div class="bg-gray-50 p-3 rounded text-sm">
+                    <pre class="whitespace-pre-wrap text-xs">{{ handout.content }}</pre>
+                </div>
+                {% endif %}
+            </div>
+        </div>

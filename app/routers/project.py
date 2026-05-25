@@ -2,17 +2,14 @@ from fastapi import APIRouter, Request, Depends, HTTPException, Form, File, Uplo
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc, delete, update
-from sqlalchemy.orm import selectinload
+from sqlalchemy import select, desc, delete, update
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import List
 from datetime import datetime, UTC
 
-from ..services.llm.schemas import Stage
 from ..services.llm import llm_gigachat
 from ..database import get_db
-from ..models.project import Project
-from ..models.user import User
+from ..models.project import Project, ProjectStatus
 from ..models.handout import Handout
 
 
@@ -130,15 +127,16 @@ async def edit_project(
 
     # Проверяем, есть ли этапы у проекта
     handouts_result = await db.execute(
-        select(Handout).where(Handout.project_id == project_id).limit(1)
+        select(Handout).where(Handout.project_id == project_id)
     )
-    has_stages = handouts_result.scalar_one_or_none() is not None
+    handouts = handouts_result.scalars().all()
+    all_handouts_generated = all(h.status == 'ready' for h in handouts)
 
     # Получаем метаданные для шага 2 (если есть)
     subject = ""
     grade = ""
     topic = ""
-    if has_stages and project.context_json:
+    if project.context_json:
         subject = project.context_json.get("subject", "")
         grade = project.context_json.get("grade", "")
         topic = project.context_json.get("topic", "")
@@ -148,10 +146,11 @@ async def edit_project(
         name="project_edit.html",
         context={
             "project": project,
-            "has_stages": has_stages,
             "subject": subject,
             "grade": grade,
-            "topic": topic
+            "topic": topic,
+            "handouts": handouts,
+            "all_handouts_generated": all_handouts_generated,
         }
     )
 
@@ -206,6 +205,7 @@ async def generate_plan_from_prompt(
     context["topic"] = llm_result.topic
     context["generated_from"] = "prompt"
     project.context_json = context
+    project.status = ProjectStatus.HANDOUT_GENERATION
     await db.commit()
 
     # Удаляем существующие этапы
@@ -227,7 +227,7 @@ async def generate_plan_from_prompt(
 
     await db.commit()
 
-    return await get_stage_list_html(project_id, user_id, db, request)
+    return await get_project_edit_content_html(project_id, user_id, db, request)
 
 
 @router.post("/{project_id}/generate-plan-from-file")
@@ -331,13 +331,20 @@ async def update_handout(
         project_id: int,
         handout_id: int,
         request: Request,
-        data: UpdateStageRequest,
+        name: str = Form(...),
+        description: str = Form(None),
+        handout_type: str = Form(...),
         db: AsyncSession = Depends(get_db)
 ):
     """Обновление этапа (имя, описание, тип)"""
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
+
+    db_result = await db.execute(select(Project).where(Project.id == project_id))
+    project_info = db_result.scalar_one_or_none()
+    if not project_info:
+        raise HTTPException(status_code=404, detail="Project not found")
 
     result = await db.execute(
         select(Handout).where(Handout.id == handout_id, Handout.project_id == project_id)
@@ -346,14 +353,21 @@ async def update_handout(
     if not handout:
         raise HTTPException(status_code=404, detail="Handout not found")
 
-    handout.stage_name = data.name
-    handout.stage_description = data.description
-    handout.handout_type = data.handout_type
+    handout.stage_name = name
+    handout.stage_description = description
+    handout.handout_type = handout_type
     handout.updated_at = datetime.now(UTC)
 
     await db.commit()
 
-    return {"status": "ok"}
+    return templates.TemplateResponse(
+        request=request,
+        name="_stage.html",
+        context={
+            "handout": handout,
+            "project": project_info,
+        }
+    )
 
 
 @router.post("/{project_id}/handouts/delete")
@@ -415,6 +429,19 @@ async def create_handout(
     return await get_stage_list_html(project_id, user_id, db, request)
 
 
+async def check_all_handouts_generated(project_id: int, db: AsyncSession) -> bool:
+    """Проверяет, все ли раздатки проекта сгенерированы"""
+    result = await db.execute(
+        select(Handout).where(Handout.project_id == project_id)
+    )
+    handouts = result.scalars().all()
+
+    if not handouts:
+        return False
+
+    return all(h.status == "ready" and h.content for h in handouts)
+
+
 @router.post("/{project_id}/handouts/{handout_id}/generate")
 async def generate_handout_content(
         project_id: int,
@@ -458,7 +485,19 @@ async def generate_handout_content(
     handout.generated_at = datetime.now(UTC)
     await db.commit()
 
-    return {"status": "ok", "content": llm_response.content}
+    all_generated = await check_all_handouts_generated(project_id, db)
+
+    response = templates.TemplateResponse(
+        request=request,
+        name="_stage.html",
+        context={
+            "handout": handout,
+            "project": project_info,
+        }
+    )
+    if all_generated:
+        response.headers["HX-Trigger"] = "all-handouts-generated"
+    return response
 
 
 @router.get("/{project_id}/handouts/{handout_id}/content")
@@ -481,6 +520,34 @@ async def get_handout_content(
         raise HTTPException(status_code=404, detail="Handout not found")
 
     return {"content": handout.content or ""}
+
+
+async def get_project_edit_content_html(project_id: int, user_id: int, db: AsyncSession, request: Request):
+    """Вспомогательная функция: возвращает HTML-фрагмент содержимого страницы редактирования проекта"""
+    result = await db.execute(
+        select(Handout)
+        .where(Handout.project_id == project_id)
+        .order_by(Handout.stage_order)
+    )
+    handouts = result.scalars().all()
+
+    # Получаем метаданные проекта
+    result = await db.execute(
+        select(Project).where(Project.id == project_id)
+    )
+    project = result.scalar_one_or_none()
+
+    return templates.TemplateResponse(
+        request=request,
+        name="_project_edit_content.html",
+        context={
+            "project": project,
+            "handouts": handouts,
+            "subject": project.context_json.get("subject", "") if project and project.context_json else "",
+            "grade": project.context_json.get("grade", "") if project and project.context_json else "",
+            "topic": project.context_json.get("topic", "") if project and project.context_json else ""
+        }
+    )
 
 
 async def get_stage_list_html(project_id: int, user_id: int, db: AsyncSession, request: Request):

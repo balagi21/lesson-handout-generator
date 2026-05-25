@@ -46,6 +46,7 @@
 | `id` | INTEGER | Первичный ключ |
 | `user_id` | INTEGER | Внешний ключ → `users.id` |
 | `name` | VARCHAR(200) | Название проекта |
+| `status` | ENUM | Статус проекта: `plan_generation`, `handout_generation`, `editing`, `completed`|
 | `context_json` | JSON | Контекст проекта (тема, класс, предмет, исходный текст плана и т.д.) |
 | `share_token` | VARCHAR(100) | Уникальный токен для публичного доступа |
 | `created_at` | DATETIME | Дата создания |

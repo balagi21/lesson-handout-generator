@@ -1,7 +1,15 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, JSON
+import enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, JSON, Enum as SQLEnum
 from sqlalchemy.orm import relationship
 from datetime import datetime, UTC
 from ..database import Base
+
+
+class ProjectStatus(str, enum.Enum):
+    PLAN_GENERATION = "plan_generation"  # Шаг 1: Генерация плана урока
+    HANDOUT_GENERATION = "handout_generation"  # Шаг 2: Генерация раздаточных материалов
+    EDITING = "editing"  # Шаг 3: Редактирование итогового файла
+    COMPLETED = "completed"
 
 
 class Project(Base):
@@ -10,6 +18,8 @@ class Project(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     name = Column(String(200), nullable=False)
+
+    status = Column(SQLEnum(ProjectStatus, native_enum=False), default=ProjectStatus.PLAN_GENERATION, nullable=False)
 
     # Контекст проекта (JSON)
     context_json = Column(JSON, nullable=True)  # {subject, grade, topic, original_plan_text, free_prompt}
