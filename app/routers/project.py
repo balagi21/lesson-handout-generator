@@ -15,7 +15,7 @@ from ..services.llm import llm_gigachat
 from ..database import get_db
 from ..models.project import Project, ProjectStatus
 from ..models.handout import Handout
-from ..models.export import ExportedPDF
+from ..models.export import ExportedFile
 
 
 router = APIRouter(prefix="/projects", tags=["projects"])
@@ -132,7 +132,7 @@ async def edit_project(
     has_pdf = False
     if all_handouts_generated:
         db_result = await db.execute(
-            select(ExportedPDF).where(ExportedPDF.project_id == project_id)
+            select(ExportedFile).where(ExportedFile.project_id == project_id)
         )
         has_pdf = db_result.scalar_one_or_none() is not None
 
@@ -144,6 +144,8 @@ async def edit_project(
         subject = project.context_json.get("subject", "")
         grade = project.context_json.get("grade", "")
         topic = project.context_json.get("topic", "")
+
+    fill_rendered_content(handouts)
 
     return templates.TemplateResponse(
         request=request,
@@ -158,6 +160,17 @@ async def edit_project(
             "has_pdf": has_pdf,
         }
     )
+
+
+def fill_rendered_content(handouts):
+    for handout in handouts:
+        if handout.content:
+            handout.rendered_content = markdown.markdown(
+                handout.content,
+                extensions=['tables', 'fenced_code']
+            )
+        else:
+            handout.rendered_content = ""
 
 
 @router.post("/{project_id}/delete")
@@ -396,7 +409,7 @@ async def delete_handout(
         await db.commit()
 
     # Возвращаем обновлённый список
-    return await get_stage_list_html(project_id, user_id, db, request)
+    return await get_project_edit_content_html(project_id, user_id, db, request)
 
 
 @router.post("/{project_id}/handouts/create")
@@ -492,6 +505,8 @@ async def generate_handout_content(
 
     all_generated = await check_all_handouts_generated(project_id, db)
 
+    fill_rendered_content([handout])
+
     response = templates.TemplateResponse(
         request=request,
         name="_stage.html",
@@ -535,6 +550,7 @@ async def get_project_edit_content_html(project_id: int, user_id: int, db: Async
         .order_by(Handout.stage_order)
     )
     handouts = result.scalars().all()
+    fill_rendered_content(handouts)
 
     # Получаем метаданные проекта
     result = await db.execute(
@@ -629,8 +645,8 @@ async def get_stage_list(
     )
 
 
-@router.post("/{project_id}/export-pdf")
-async def export_pdf(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+@router.post("/{project_id}/export")
+async def export_file(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -655,21 +671,53 @@ async def export_pdf(project_id: int, request: Request, db: AsyncSession = Depen
 
     html_content = markdown.markdown(all_markdown, extensions=['tables', 'fenced_code'])
 
+    onload_script = """
+    <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                renderMathInElement(document.body, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            });
+        </script>"""
+
     full_html = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="UTF-8">
         <title>{project.name}</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css">
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/contrib/auto-render.min.js"></script>
+        {onload_script}
         <style>
-            body {{ font-family: Arial, sans-serif; margin: 2cm; }}
-            h1 {{ color: #2c3e50; border-bottom: 2px solid #3498db; }}
-            h2 {{ color: #34495e; margin-top: 1.5em; }}
+            @media print {{
+                body {{ margin: 0; padding: 1cm; }}
+                .page-break {{ page-break-before: always; }}
+            }}
+            body {{
+                font-family: 'Segoe UI', 'Arial', sans-serif;
+                line-height: 1.6;
+                max-width: 900px;
+                margin: 2rem auto;
+                padding: 0 1rem;
+                color: #333;
+            }}
+            h1, h2, h3 {{ color: #2c3e50; }}
+            h1 {{ border-bottom: 2px solid #3498db; padding-bottom: 0.3em; }}
+            h2 {{ margin-top: 1.5em; border-bottom: 1px solid #ecf0f1; }}
             table {{ border-collapse: collapse; width: 100%; margin: 1em 0; }}
             th, td {{ border: 1px solid #ddd; padding: 8px; text-align: left; }}
             th {{ background-color: #f2f2f2; }}
-            code {{ background-color: #f4f4f4; padding: 2px 4px; border-radius: 4px; }}
-            pre {{ background-color: #f4f4f4; padding: 1em; border-radius: 4px; overflow-x: auto; }}
+            pre, code {{ background-color: #f4f4f4; border-radius: 4px; }}
+            pre {{ padding: 1em; overflow-x: auto; }}
+            code {{ padding: 2px 4px; }}
         </style>
     </head>
     <body>
@@ -678,35 +726,30 @@ async def export_pdf(project_id: int, request: Request, db: AsyncSession = Depen
     </html>
     """
 
-    pdf_buffer = BytesIO()
-    weasyprint.HTML(string=full_html).write_pdf(pdf_buffer)
-    pdf_buffer.seek(0)
-    pdf_bytes = pdf_buffer.getvalue()
-
     db_result = await db.execute(
-        select(ExportedPDF).where(ExportedPDF.project_id == project_id)
+        select(ExportedFile).where(ExportedFile.project_id == project_id)
     )
-    existing_pdf = db_result.scalar_one_or_none()
+    existing_export = db_result.scalar_one_or_none()
 
-    if existing_pdf:
-        existing_pdf.pdf_data = pdf_bytes
-        existing_pdf.updated_at = datetime.now(UTC)
+    if existing_export:
+        existing_export.file_data = full_html.encode("utf-8")
+        existing_export.updated_at = datetime.now(UTC)
     else:
-        new_pdf = ExportedPDF(
+        new_export = ExportedFile(
             project_id=project_id,
-            pdf_data=pdf_bytes
+            file_data=full_html.encode("utf-8")
         )
-        db.add(new_pdf)
+        db.add(new_export)
 
     await db.commit()
 
     response = Response()
-    response.headers["HX-Trigger"] = "pdf-ready"
+    response.headers["HX-Trigger"] = "export-ready"
     return response
 
 
-@router.get("/{project_id}/download-pdf")
-async def download_pdf(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+@router.get("/{project_id}/view-result")
+async def view_result(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     user_id = request.session.get("user_id")
     if not user_id:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -719,14 +762,14 @@ async def download_pdf(project_id: int, request: Request, db: AsyncSession = Dep
         raise HTTPException(status_code=404, detail="Project not found")
 
     db_result = await db.execute(
-        select(ExportedPDF).where(ExportedPDF.project_id == project_id)
+        select(ExportedFile).where(ExportedFile.project_id == project_id)
     )
     existing_pdf = db_result.scalar_one_or_none()
     if not existing_pdf:
         raise HTTPException(status_code=404, detail="File not found")
 
     return Response(
-        content=existing_pdf.pdf_data,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={quote(project.name)}.pdf"}
+        content=existing_pdf.file_data.decode("utf-8"),
+        media_type="text/html",
+        headers={"Content-Disposition": f"inline; filename={quote(project.name)}.html"}
     )

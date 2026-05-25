@@ -55,17 +55,19 @@
         </button>
         <button id="exportBtn"
                 class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if not all_handouts_generated %}hidden{% endif %}"
-                hx-post="/projects/{{ project.id }}/export-pdf"
+                hx-post="/projects/{{ project.id }}/export"
                 hx-target="#export-result"
                 ht-swap="innerHTML">
-            Экспортировать в PDF
+            Экспортировать
         </button>
 
-        <a id="downloadPdf"
-           href="/projects/{{ project.id }}/download-pdf"
-                class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 {% if not has_pdf %}hidden{% endif %}"
+        <a id="viewResult"
+           href="/projects/{{ project.id }}/view-result"
+           target="_blank"
+           rel="noopener noreferrer"
+           class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 {% if not has_pdf %}hidden{% endif %}"
         >
-            Скачать PDF
+            Смотреть результат
         </a>
 
         <div id="export-result"></div>

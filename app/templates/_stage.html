@@ -33,7 +33,7 @@
                     <button class="delete-stage-btn px-2 py-1 text-red-500 hover:text-red-700"
                             hx-post="/projects/{{ project.id }}/handouts/delete"
                             hx-vals='{"handout_id": {{ handout.id }}}'
-                            hx-target="#stage-list-container"
+                            hx-target="#project_edit_content"
                             hx-confirm="Удалить этот этап?">🗑️</button>
                 </div>
             </div>
@@ -63,9 +63,9 @@
                 </span>
             </div>
             <div id="stage-preview-{{ handout.id }}" class="mt-2">
-                {% if handout.content %}
+                {% if handout.rendered_content %}
                 <div class="bg-gray-50 p-3 rounded text-sm">
-                    <pre class="whitespace-pre-wrap text-xs">{{ handout.content }}</pre>
+                    <div class="prose prose-sm max-w-none">{{ handout.rendered_content | safe }}</div>
                 </div>
                 {% endif %}
             </div>
