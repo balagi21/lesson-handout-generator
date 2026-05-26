@@ -8,6 +8,7 @@ from ..database import get_db
 from ..models.user import User
 from ..utils.password import hash_password, verify_password
 from ..utils.const import PASSWORD_MAX_LENGTH
+from ..services.db.user_quota import create_user_quota
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 templates = Jinja2Templates(directory="app/templates")
@@ -78,6 +79,9 @@ async def register(
     )
 
     db.add(new_user)
+    await db.flush()
+
+    await create_user_quota(db, new_user.id)
     await db.commit()
 
     # Перенаправляем на страницу входа

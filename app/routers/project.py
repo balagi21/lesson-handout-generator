@@ -1,6 +1,4 @@
 import markdown
-import weasyprint
-from io import BytesIO
 from urllib.parse import quote
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, File, UploadFile
 from fastapi.responses import Response, RedirectResponse
@@ -12,6 +10,7 @@ from typing import List
 from datetime import datetime, UTC
 
 from ..services.llm import llm_gigachat
+from ..services.db.user_quota import consume_quota
 from ..services.file_parser import extract_text
 from ..database import get_db
 from ..models.project import Project, ProjectStatus
@@ -23,18 +22,9 @@ router = APIRouter(prefix="/projects", tags=["projects"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-class GeneratePlanPromptRequest(BaseModel):
-    prompt: str
-
-
 class ReorderRequest(BaseModel):
     handout_id: int
     new_order: int
-
-
-class UpdateStageRequest(BaseModel):
-    name: str
-    description: str
 
 
 @router.get("/")
@@ -225,6 +215,10 @@ async def generate_plan(
         file_content = await extract_text(file)
     else:
         file_content = ""
+
+    has_quota = await consume_quota(db, user_id, 1)
+    if not has_quota:
+        raise HTTPException(429, "Превышен дневной лимит запросов")
 
     llm_result = llm_gigachat.generate_plan(prompt, file_content)
 
@@ -430,6 +424,10 @@ async def generate_handout_content(
     handout = db_result.scalar_one_or_none()
     if not handout:
         raise HTTPException(status_code=404, detail="Handout not found")
+
+    has_quota = await consume_quota(db, user_id, 1)
+    if not has_quota:
+        raise HTTPException(429, "Превышен дневной лимит запросов")
 
     # Обновляем статус
     handout.status = "generating"
