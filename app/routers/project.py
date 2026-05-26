@@ -27,6 +27,21 @@ class ReorderRequest(BaseModel):
     new_order: int
 
 
+async def get_project_with_validation(db, user_id, project_id):
+    """Получает модель проекта по id
+    Делает валидацию: есть авторизованный пользователь, и проект принадлежит ему"""
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    result = await db.execute(
+        select(Project).where(Project.id == project_id, Project.user_id == user_id)
+    )
+    project = result.scalar_one_or_none()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return project
+
+
+
 @router.get("/")
 async def list_projects(
         request: Request,
@@ -97,21 +112,7 @@ async def edit_project(
 ):
     """Страница редактирования проекта"""
     user_id = request.session.get("user_id")
-    if not user_id:
-        return RedirectResponse(url="/auth/login", status_code=303)
-
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    project = result.scalar_one_or_none()
-
-    if not project:
-        return templates.TemplateResponse(
-            request=request,
-            name="404.html",
-            context={"message": "Урок не найден"},
-            status_code=404
-        )
+    project = await get_project_with_validation(db, user_id, project_id)
 
     # Проверяем, есть ли этапы у проекта
     handouts_result = await db.execute(
@@ -171,17 +172,10 @@ async def delete_project(
 ):
     """Удаление проекта"""
     user_id = request.session.get("user_id")
-    if not user_id:
-        return {"error": "Unauthorized"}, 401
+    project = await get_project_with_validation(db, user_id, project_id)
 
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    project = result.scalar_one_or_none()
-
-    if project:
-        await db.delete(project)
-        await db.commit()
+    await db.delete(project)
+    await db.commit()
 
     return RedirectResponse(url="/projects/", status_code=303)
 
@@ -194,22 +188,13 @@ async def generate_plan(
         file: UploadFile = File(None),
         db: AsyncSession = Depends(get_db)
 ):
-    user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
     if not prompt and not file:
         raise HTTPException(
             status_code=400,
             detail="Укажите описание урока или загрузите файл с планом"
         )
-
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    project = result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    user_id = request.session.get("user_id")
+    project = await get_project_with_validation(db, user_id, project_id)
 
     if file:
         file_content = await extract_text(file)
@@ -262,15 +247,7 @@ async def reorder_handouts(
 ):
     """Изменение порядка этапов"""
     user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    # Проверяем доступ к проекту
-    result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    if not result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Project not found")
+    await get_project_with_validation(db, user_id, project_id)
 
     # Обновляем порядок
     for order_data in orders:
@@ -297,13 +274,7 @@ async def update_handout(
 ):
     """Обновление этапа (имя, описание, тип)"""
     user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    db_result = await db.execute(select(Project).where(Project.id == project_id))
-    project_info = db_result.scalar_one_or_none()
-    if not project_info:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project_info = await get_project_with_validation(db, user_id, project_id)
 
     result = await db.execute(
         select(Handout).where(Handout.id == handout_id, Handout.project_id == project_id)
@@ -408,15 +379,7 @@ async def generate_handout_content(
 ):
     """Генерация контента для этапа"""
     user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    db_result = await db.execute(select(Project).where(Project.id == project_id))
-    project_info = db_result.scalar_one_or_none()
-    if not project_info:
-        raise HTTPException(status_code=404, detail="Project not found")
-    if project_info.user_id != user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
+    project_info = await get_project_with_validation(db, user_id, project_id)
 
     db_result = await db.execute(
         select(Handout).where(Handout.id == handout_id, Handout.project_id == project_id)
@@ -590,15 +553,7 @@ async def get_stage_list(
 @router.post("/{project_id}/export")
 async def export_file(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    db_result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    project = db_result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_project_with_validation(db, user_id, project_id)
 
     db_result = await db.execute(
         select(Handout)
@@ -693,15 +648,7 @@ async def export_file(project_id: int, request: Request, db: AsyncSession = Depe
 @router.get("/{project_id}/view-result")
 async def view_result(project_id: int, request: Request, db: AsyncSession = Depends(get_db)):
     user_id = request.session.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-
-    db_result = await db.execute(
-        select(Project).where(Project.id == project_id, Project.user_id == user_id)
-    )
-    project = db_result.scalar_one_or_none()
-    if not project:
-        raise HTTPException(status_code=404, detail="Project not found")
+    project = await get_project_with_validation(db, user_id, project_id)
 
     db_result = await db.execute(
         select(ExportedFile).where(ExportedFile.project_id == project_id)
