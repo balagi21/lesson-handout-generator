@@ -12,6 +12,7 @@ from typing import List
 from datetime import datetime, UTC
 
 from ..services.llm import llm_gigachat
+from ..services.file_parser import extract_text
 from ..database import get_db
 from ..models.project import Project, ProjectStatus
 from ..models.handout import Handout
@@ -221,7 +222,12 @@ async def generate_plan(
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
 
-    llm_result = llm_gigachat.generate_plan_from_prompt(prompt)
+    if file:
+        file_content = await extract_text(file)
+    else:
+        file_content = ""
+
+    llm_result = llm_gigachat.generate_plan(prompt, file_content)
 
     # Сохраняем метаданные в context_json проекта
     context = project.context_json or {}

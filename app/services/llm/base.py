@@ -13,23 +13,15 @@ class BaseLLMProvider(ABC):
         self.api_key = api_key
 
     @abstractmethod
-    def generate_plan_from_prompt(
+    def generate_plan(
             self,
             prompt: str,
+            file_content: str,
             subject: Optional[str] = None,
             grade: Optional[str] = None,
             topic: Optional[str] = None
     ) -> PlanGenerationResult:
         """Генерация плана урока из текстового описания"""
-        pass
-
-    @abstractmethod
-    def generate_plan_from_text(
-            self,
-            text: str,
-            filename: Optional[str] = None
-    ) -> PlanGenerationResult:
-        """Генерация плана урока из текста файла"""
         pass
 
     @abstractmethod
@@ -45,6 +37,6 @@ class BaseLLMProvider(ABC):
         pass
 
     @abstractmethod
-    def extract_metadata(self, text: str) -> dict:
-        """Извлечение предмета, класса, темы из текста"""
+    def extract_file_content(self, file_content: str):
+        """По содержимому файла извлекает только релевантные для генерации данные"""
         pass
