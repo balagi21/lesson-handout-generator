@@ -53,7 +53,7 @@
                 </div>
                 {% if request.session.user_id %}
                     <div class="flex items-center space-x-4">
-                        <span class="text-gray-600">👋 {{ request.session.username }}</span>
+                        <a href="/profile/" class="text-gray-600 hover:text-gray-800">👋 {{ request.session.username }}</a>
                         <a href="/projects/" class="text-gray-600 hover:text-gray-800">Мои уроки</a>
                         <a href="/auth/logout" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Выйти</a>
                     </div>

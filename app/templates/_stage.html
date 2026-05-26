@@ -38,20 +38,6 @@
                 </div>
             </div>
             <div class="mt-3">
-                <select name="handout_type"
-                        class="handout-type px-2 py-1 border rounded"
-                        hx-post="/projects/{{ project.id }}/handouts/{{ handout.id }}/update"
-                        hx-include="#handout-{{ handout.id }}"
-                        hx-trigger="change"
-                        hx-target="#handout-{{ handout.id }}"
-                        hx-swap="outerHTML">
-                    <option value="work_sheet" {% if handout.handout_type == 'work_sheet' %}selected{% endif %}>📋 Рабочий лист</option>
-                    <option value="memo" {% if handout.handout_type == 'memo' %}selected{% endif %}>📖 Памятка</option>
-                    <option value="table" {% if handout.handout_type == 'table' %}selected{% endif %}>📊 Таблица</option>
-                    <option value="scheme" {% if handout.handout_type == 'scheme' %}selected{% endif %}>📐 Схема</option>
-                    <option value="reflection" {% if handout.handout_type == 'reflection' %}selected{% endif %}>💭 Рефлексия</option>
-                    <option value="cards" {% if handout.handout_type == 'cards' %}selected{% endif %}>🃏 Карточки</option>
-                </select>
                 <button class="generate-stage-btn ml-2 bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
                         hx-post="/projects/{{ project.id }}/handouts/{{ handout.id }}/generate"
                         hx-target="#handout-{{ handout.id }}"

@@ -1,21 +1,10 @@
 from pydantic import BaseModel
-from typing import List, Optional
-from enum import Enum
-
-
-class HandoutType(str, Enum):
-    WORK_SHEET = "work_sheet"
-    MEMO = "memo"
-    TABLE = "table"
-    SCHEME = "scheme"
-    REFLECTION = "reflection"
-    CARDS = "cards"
+from typing import List
 
 
 class Stage(BaseModel):
     name: str
     description: str
-    handout_type: HandoutType
 
 
 class PlanGenerationResult(BaseModel):

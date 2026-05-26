@@ -1,12 +1,13 @@
 import json
 from typing import Optional
 from pathlib import Path
+
 from gigachat import GigaChat
 from gigachat.models import Chat, Messages, MessagesRole
 from .base import BaseLLMProvider
-from .schemas import PlanGenerationResult, HandoutGenerationResult, HandoutType
+from .schemas import PlanGenerationResult, HandoutGenerationResult
 from .prompts import SYSTEM_PROMPT_CREATE_PLAN, SYSTEM_PROMPT_CREATE_HANDOUT, \
-                     USER_PROMPT_CREATE_HANDOUT_TEMPLATE, USER_PROMPT_CREATE_PLAN_TEMPLATE, \
+                     USER_PROMPT_CREATE_HANDOUT_TEMPLATE, \
                      SYSTEM_PROMPT_EXTRACT_CONTENT
 
 
@@ -30,12 +31,14 @@ class GigaChatProvider(BaseLLMProvider):
             topic: Optional[str] = None
     ) -> PlanGenerationResult:
         parsed_file_content = self.extract_file_content(file_content)
+        prompt_text = ["Сгенерируй список этапов урока, для которых потребуются раздаточные материалы.\n\n"]
+        if prompt:
+            prompt_text.append(f"Пользовательский запрос: {prompt}\n")
+        if file_content:
+            prompt_text.append(f"Содержимое файла:\n---\n{file_content}\n---")
         response = self._client.chat(Chat(messages=[
             Messages(role=MessagesRole.SYSTEM, content=SYSTEM_PROMPT_CREATE_PLAN),
-            Messages(role=MessagesRole.USER, content=USER_PROMPT_CREATE_PLAN_TEMPLATE.format(
-                user_prompt=prompt,
-                file_content=parsed_file_content,
-            ))
+            Messages(role=MessagesRole.USER, content=''.join(prompt_text))
         ], temperature=0.2))
         print(parsed_file_content)
         data = json.loads(response.choices[0].message.content)
@@ -54,7 +57,6 @@ class GigaChatProvider(BaseLLMProvider):
             subject: str,
             grade: str,
             topic: str,
-            handout_type: HandoutType,
             description: str
     ) -> HandoutGenerationResult:
         response = self._client.chat(Chat(messages=[
@@ -63,7 +65,6 @@ class GigaChatProvider(BaseLLMProvider):
                 subject=subject,
                 grade=grade,
                 topic=topic,
-                handout_type=handout_type,
                 description=description
             ))
         ]))

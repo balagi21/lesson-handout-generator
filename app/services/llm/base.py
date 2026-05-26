@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Optional, ClassVar
-from .schemas import PlanGenerationResult, HandoutGenerationResult, HandoutType
+from .schemas import PlanGenerationResult, HandoutGenerationResult
 
 
 class BaseLLMProvider(ABC):
@@ -30,7 +30,6 @@ class BaseLLMProvider(ABC):
             subject: str,
             grade: str,
             topic: str,
-            handout_type: HandoutType,
             description: str
     ) -> HandoutGenerationResult:
         """Генерация раздаточного материала для этапа"""

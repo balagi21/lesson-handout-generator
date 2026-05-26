@@ -2,12 +2,13 @@ from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.exception_handlers import http_exception_handler
+from fastapi.responses import RedirectResponse
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from contextlib import asynccontextmanager
 
 from .database import engine, Base
-from .routers import auth, project
+from .routers import auth, project, profile
 from .config import settings
 
 
@@ -31,16 +32,11 @@ app.add_middleware(
 # Подключаем роутеры
 app.include_router(auth.router)
 app.include_router(project.router)
+app.include_router(profile.router)
 
 # Статика и шаблоны
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
-
-
-@app.middleware("http")
-async def session_middleware(request: Request, call_next):
-    response = await call_next(request)
-    return response
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -60,3 +56,8 @@ async def home(request: Request):
         request=request,
         name="index.html"
     )
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    return RedirectResponse(url="/static/images/favicon.ico")

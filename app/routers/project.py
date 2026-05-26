@@ -35,7 +35,6 @@ class ReorderRequest(BaseModel):
 class UpdateStageRequest(BaseModel):
     name: str
     description: str
-    handout_type: str
 
 
 @router.get("/")
@@ -251,7 +250,6 @@ async def generate_plan(
             stage_order=idx,
             stage_name=stage.name,
             stage_description=stage.description,
-            handout_type=stage.handout_type,
             status="pending"
         )
         db.add(handout)
@@ -301,7 +299,6 @@ async def update_handout(
         request: Request,
         name: str = Form(...),
         description: str = Form(None),
-        handout_type: str = Form(...),
         db: AsyncSession = Depends(get_db)
 ):
     """Обновление этапа (имя, описание, тип)"""
@@ -323,7 +320,6 @@ async def update_handout(
 
     handout.stage_name = name
     handout.stage_description = description
-    handout.handout_type = handout_type
     handout.updated_at = datetime.now(UTC)
 
     await db.commit()
@@ -387,7 +383,6 @@ async def create_handout(
         stage_order=max_order,
         stage_name=name,
         stage_description=description,
-        handout_type="work_sheet",
         status="pending"
     )
     db.add(new_handout)
@@ -444,7 +439,6 @@ async def generate_handout_content(
         subject=project_info.context_json["subject"],
         grade=project_info.context_json["grade"],
         topic=project_info.context_json["topic"],
-        handout_type=handout.handout_type,
         description=handout.stage_description
     )
 

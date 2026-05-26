@@ -34,7 +34,6 @@ class Handout(Base):
     stage_description = Column(Text, nullable=True)  # Описание этапа (цель, тип деятельности)
 
     # Данные раздатки
-    handout_type = Column(SQLEnum(HandoutType, native_enum=False), nullable=False)
     content = Column(Text, nullable=True)  # HTML или Markdown контент
     status = Column(SQLEnum(HandoutStatus, native_enum=False), default=HandoutStatus.PENDING, nullable=False)
 

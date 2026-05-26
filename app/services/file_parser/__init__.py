@@ -5,7 +5,7 @@ from .docx_parser import parse_docx
 
 async def extract_text(file: UploadFile) -> str:
     """
-    Определяет тип файла по расширению или MIME-типу и извлекает текст.
+    Определяет тип файла по расширению и извлекает текст.
     """
     filename = file.filename.lower()
     if filename.endswith('.txt'):
