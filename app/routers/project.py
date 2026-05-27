@@ -1,3 +1,4 @@
+import re
 import markdown
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, File, UploadFile
 from fastapi.responses import RedirectResponse, HTMLResponse
@@ -424,6 +425,66 @@ async def generate_handout_content(
     return response
 
 
+@router.post("/{project_id}/handouts/generate-all")
+async def generate_all_handout_content(
+        project_id: int,
+        request: Request,
+        db: AsyncSession = Depends(get_db)
+):
+    """Генерация контента для эвсех этапов, по которым ещё не было генерации"""
+    user_id = request.session.get("user_id")
+    project_info = await get_project_with_validation(db, user_id, project_id)
+
+    db_result = await db.execute(
+        select(Handout).where(Handout.status == 'pending', Handout.project_id == project_id)
+    )
+    handouts = db_result.scalars().all()
+    if not handouts:
+        raise HTTPException(status_code=404, detail="Handouts not found")
+
+    has_quota = await consume_quota(db, user_id, len(handouts))
+    if not has_quota:
+        raise HTTPException(429, "Превышен дневной лимит запросов")
+
+    # Обновляем статус
+    for handout in handouts:
+        handout.status = "generating"
+    await db.commit()
+
+    for handout in handouts:
+        llm_response = llm_gigachat.generate_handout(
+            subject=project_info.context_json["subject"],
+            grade=project_info.context_json["grade"],
+            topic=project_info.context_json["topic"],
+            description=handout.stage_description
+        )
+
+        handout.content = llm_response.content
+        handout.status = "ready"
+        handout.generated_at = datetime.now(UTC)
+    await db.commit()
+
+    all_generated = await check_all_handouts_generated(project_id, db)
+
+    fill_rendered_content(handouts)
+
+    response = templates.TemplateResponse(
+        request=request,
+        name="_project_edit_content.html",
+        context={
+            "project": project_info,
+            "handouts": handouts,
+            "subject": project_info.context_json.get("subject", "") if project_info and project_info.context_json else "",
+            "grade": project_info.context_json.get("grade", "") if project_info and project_info.context_json else "",
+            "topic": project_info.context_json.get("topic", "") if project_info and project_info.context_json else "",
+            "all_handouts_generated": all_generated,
+        }
+    )
+    if all_generated:
+        response.headers["HX-Trigger"] = "all-handouts-generated"
+    return response
+
+
 @router.get("/{project_id}/handouts/{handout_id}/content")
 async def get_handout_content(
         project_id: int,
@@ -582,6 +643,7 @@ async def compile_project(project_id: int, request: Request, db: AsyncSession = 
     handouts = db_result.scalars().all()
 
     all_markdown = "\n\n---\n\n".join(f"# {handout.stage_name}\n\n{handout.content}" for handout in handouts)
+    all_markdown = re.sub(r'\${2,}(\d+)\${2,}', r'\1', all_markdown)
 
     project.compiled_content = all_markdown
     project.status = ProjectStatus.EDITING
@@ -600,7 +662,7 @@ async def update_content(
     user_id = request.session.get("user_id")
     project = await get_project_with_validation(db, user_id, project_id)
 
-    project.compiled_content = compiled_content
+    project.compiled_content = re.sub(r'\${2,}(\d+)\${2,}', r'\1', compiled_content)
     await db.commit()
 
     return HTMLResponse('<span class="text-green-600">✅ Сохранено</span>')

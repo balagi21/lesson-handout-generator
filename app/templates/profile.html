@@ -1,10 +1,56 @@
 {% extends "base.html" %}
 
+{% block title %}Профиль{% endblock %}
+
 {% block content %}
-<div class="text-center">
-    <h1 class="text-2xl font-bold text-gray-900 mb-4">
-        Профиль {{request.session.username}}<br>
-        Израсходовано запросов: <span class="text-blue-600">{{quota.daily_requests}} / {{quota.daily_limit}}</span>
-    </h1>
+<div class="bg-white rounded-lg shadow-md p-6">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-gray-800">Профиль</h1>
+    </div>
+
+    <div class="max-w-2xl mx-auto">
+        <div class="mb-8 p-4 bg-gray-50 rounded-lg">
+            <div class="flex items-center space-x-3 mb-4">
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <span class="text-xl text-blue-600">👤</span>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500">Имя пользователя</p>
+                    <p class="text-lg font-medium text-gray-800">{{ request.session.username }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center justify-between mb-3">
+                <div class="flex items-center space-x-2">
+                    <span class="text-xl">📊</span>
+                    <h2 class="text-lg font-semibold text-blue-800">Доступные запросы</h2>
+                </div>
+                <span class="text-sm text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Лимит: {{ quota.daily_limit }}</span>
+            </div>
+
+            <div class="mb-3">
+                <div class="flex justify-between text-sm text-blue-700 mb-1">
+                    <span>Использовано сегодня</span>
+                    <span>{{ quota.daily_requests }} из {{ quota.daily_limit }}</span>
+                </div>
+                <div class="w-full bg-blue-200 rounded-full h-2.5">
+                    <div class="bg-blue-600 h-2.5 rounded-full"
+                         style="width: {% if quota.daily_limit > 0 %}{{ (quota.daily_requests / quota.daily_limit * 100) | round }}{% else %}0{% endif %}%">
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-sm text-blue-700 mt-3">
+                {% set remaining = quota.daily_limit - quota.daily_requests %}
+                {% if remaining > 0 %}
+                    ✅ Осталось <span class="font-semibold">{{ remaining }}</span> запросов на сегодня
+                {% else %}
+                    ⚠️ Лимит запросов на сегодня исчерпан. Возвращайтесь завтра!
+                {% endif %}
+            </p>
+        </div>
+    </div>
 </div>
 {% endblock %}

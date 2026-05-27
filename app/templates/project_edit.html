@@ -27,7 +27,7 @@
 
     // Добавление этапа
     document.getElementById('addStageBtn')?.addEventListener('click', async () => {
-        const response = await fetch(`/projects/${projectId}/handouts/create`, {
+        const response = await fetch(`/projects/{{ project.id }}/handouts/create`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: new URLSearchParams({
