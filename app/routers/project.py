@@ -1,6 +1,6 @@
 import markdown
 from fastapi import APIRouter, Request, Depends, HTTPException, Form, File, UploadFile
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc, delete, update
@@ -588,3 +588,19 @@ async def compile_project(project_id: int, request: Request, db: AsyncSession = 
     await db.commit()
 
     return await get_project_edit_content_html(project_id, user_id, db, request)
+
+
+@router.post("/{project_id}/update-content")
+async def update_content(
+        project_id: int,
+        request: Request,
+        compiled_content: str = Form(...),
+        db: AsyncSession = Depends(get_db)
+):
+    user_id = request.session.get("user_id")
+    project = await get_project_with_validation(db, user_id, project_id)
+
+    project.compiled_content = compiled_content
+    await db.commit()
+
+    return HTMLResponse('<span class="text-green-600">✅ Сохранено</span>')

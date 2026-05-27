@@ -128,15 +128,27 @@
             <ul class="list-disc list-inside space-y-1 ml-1">
                 <li>Исправляйте, дополняйте или сокращайте текст прямо в редакторе.</li>
                 <li>После завершения работы нажмите «Смотреть результат» — документ откроется в новой вкладке, готовый к печати или сохранению.</li>
+                <li>Вы можете использовать формулы LaTeX, например <code>$\frac{5}{7}$</code> = $\frac{5}{7}$</li>
             </ul>
         </div>
     </div>
-    {{ project.compiled_content }}
+    <div id="editor-container" style="height: 500px;"></div>
+    <input type="hidden" id="compiled_content" name="compiled_content" value="{{ project.compiled_content }}">
 </div>
+<button id="saveContentBtn"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mt-4"
+        onclick="saveEditorContent(); htmx.trigger(this, 'save');"
+        hx-post="/projects/{{ project.id }}/update-content"
+        hx-include="#compiled_content"
+        hx-target="#save-status">
+    💾 Сохранить изменения
+</button>
+<div id="save-status" class="mt-2 text-sm"></div>
 <a id="viewResult"
    href="/projects/{{ project.id }}/view-result"
    target="_blank"
    rel="noopener noreferrer"
+   onclick="saveEditorContent()"
    class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 {% if not has_pdf %}hidden{% endif %}"
 >
     Смотреть результат

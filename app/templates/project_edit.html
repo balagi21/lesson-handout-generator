@@ -2,6 +2,11 @@
 
 {% block title %}{{ project.name }}{% endblock %}
 
+{% block extra_head %}
+<link rel="stylesheet" href="https://uicdn.toast.com/editor/latest/toastui-editor.min.css" />
+<script src="https://uicdn.toast.com/editor/latest/toastui-editor-all.min.js"></script>
+{% endblock %}
+
 {% block content %}
 <div class="bg-white rounded-lg shadow-md p-6">
     <div class="flex justify-between items-center mb-6">
@@ -39,5 +44,42 @@
         document.getElementById('compileBtn').classList.remove('hidden');
     });
 
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const editorContainer = document.getElementById('editor-container');
+        const hiddenInput = document.getElementById('compiled_content');
+
+        if (editorContainer && window.toastui) {
+            const editor = new toastui.Editor({
+                el: editorContainer,
+                initialEditType: 'wysiwyg',
+                previewStyle: 'vertical',
+                height: '600px',
+                initialValue: hiddenInput.value || '',
+                language: 'ru',
+                toolbarItems: [
+                    ['heading', 'bold', 'italic', 'strike'],
+                    ['hr', 'quote'],
+                    ['ul', 'ol', 'task', 'indent', 'outdent'],
+                    ['table', 'image', 'link'],
+                    ['code', 'codeblock']
+                ],
+                hideModeSwitch: true,
+                useDefaultHTMLSanitizer: false,
+                customHTMLRenderer: {}
+            });
+            window.editorInstance = editor;
+        }
+    });
+
+    function saveEditorContent() {
+        if (window.editorInstance) {
+            const content = window.editorInstance.getMarkdown();
+            document.getElementById('compiled_content').value = content;
+            return true;
+        }
+        return false;
+    }
 </script>
 {% endblock %}
