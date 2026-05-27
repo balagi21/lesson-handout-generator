@@ -65,7 +65,30 @@
 {% if project.status == 'handout_generation' %}
 <div id="step2">
     <hr class="my-6">
-    <h2 class="text-xl font-semibold mb-4">Шаг 2. Генерация раздаточных материалов</h2>
+    <h2 class="text-xl font-semibold mb-4">Шаг 2. Составляем список материалов</h2>
+    <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <p class="text-blue-800 font-semibold mb-2">📝 Что нужно сделать</p>
+
+        <div class="space-y-3 text-sm text-blue-700">
+            <p>
+                На этом шаге вы управляете списком материалов, которые будут созданы для вашего урока.
+            </p>
+
+            <ul class="list-disc list-inside space-y-1 ml-1">
+                <li><span class="font-medium">Чтобы создать материал</span> — нажмите «Сгенерировать».
+                    Система сама подготовит текст на основе вашего описания.</li>
+                <li><span class="font-medium">Если результат не понравился</span> — исправьте описание и нажмите
+                    «Сгенерировать» ещё раз. Каждая новая попытка будет лучше предыдущей.</li>
+                <li><span class="font-medium">Лишний материал</span> — удалите его кнопкой «🗑️».</li>
+                <li><span class="font-medium">Не хватает материала</span> — добавьте новый этап кнопкой внизу страницы.</li>
+            </ul>
+
+            <p class="mt-3 pt-1 border-t border-blue-200">
+                ✅ <span class="font-medium">Когда всё будет готово</span> — нажмите «Перейти к редактированию».
+                Там вы сможете отредактировать тексты, оформить их и сохранить в нужном формате.
+            </p>
+        </div>
+    </div>
 
     <div id="stage-list-container">
             {% include "_stage_list.html" with context %}
@@ -80,24 +103,42 @@
                 class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if all_handouts_generated %}hidden{% endif %}">
             Сгенерировать все
         </button>
-        <button id="exportBtn"
+        <button id="compileBtn"
                 class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 {% if not all_handouts_generated %}hidden{% endif %}"
-                hx-post="/projects/{{ project.id }}/export"
-                hx-target="#export-result"
+                hx-post="/projects/{{ project.id }}/compile"
+                hx-target="#project_edit_content"
                 ht-swap="innerHTML">
-            Экспортировать
+            К редактированию
         </button>
-
-        <a id="viewResult"
-           href="/projects/{{ project.id }}/view-result"
-           target="_blank"
-           rel="noopener noreferrer"
-           class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 {% if not has_pdf %}hidden{% endif %}"
-        >
-            Смотреть результат
-        </a>
-
-        <div id="export-result"></div>
     </div>
 </div>
+{% endif %}
+
+{% if project.status == 'editing' %}
+<div id="step3">
+<hr class="my-6">
+    <h2 class="text-xl font-semibold mb-4">Шаг 3. Редактирование материалов</h2>
+    <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+
+        <p class="text-blue-800 font-semibold mb-2">📝 Финальный шаг</p>
+        <div class="space-y-3 text-sm text-blue-700">
+            <p>
+                Здесь вы можете отредактировать текст перед тем, как сохранить или распечатать его.
+            </p>
+            <ul class="list-disc list-inside space-y-1 ml-1">
+                <li>Исправляйте, дополняйте или сокращайте текст прямо в редакторе.</li>
+                <li>После завершения работы нажмите «Смотреть результат» — документ откроется в новой вкладке, готовый к печати или сохранению.</li>
+            </ul>
+        </div>
+    </div>
+    {{ project.compiled_content }}
+</div>
+<a id="viewResult"
+   href="/projects/{{ project.id }}/view-result"
+   target="_blank"
+   rel="noopener noreferrer"
+   class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 {% if not has_pdf %}hidden{% endif %}"
+>
+    Смотреть результат
+</a>
 {% endif %}
