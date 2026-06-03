@@ -56,9 +56,4 @@ pip install -r requirements.txt
 
 ## Документация
 
-- [Продуктовое исследование](docs/product_research.md)
 - [Архитектура и стек](docs/architecture.md)
-- [Дорожная карта](docs/roadmap.md)
-- [Сравнение с аналогами](docs/comparison.md)
-- [Риски и меры](docs/risks.md)
-- Карточка прототипа: [pdf](docs/prototype_card.pdf) [xlsx](docs/prototype_card.xlsx)
