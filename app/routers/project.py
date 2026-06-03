@@ -643,7 +643,6 @@ async def compile_project(project_id: int, request: Request, db: AsyncSession = 
     handouts = db_result.scalars().all()
 
     all_markdown = "\n\n---\n\n".join(f"# {handout.stage_name}\n\n{handout.content}" for handout in handouts)
-    all_markdown = re.sub(r'\${2,}(\d+)\${2,}', r'\1', all_markdown)
 
     project.compiled_content = all_markdown
     project.status = ProjectStatus.EDITING
@@ -662,7 +661,7 @@ async def update_content(
     user_id = request.session.get("user_id")
     project = await get_project_with_validation(db, user_id, project_id)
 
-    project.compiled_content = re.sub(r'\${2,}(\d+)\${2,}', r'\1', compiled_content)
+    project.compiled_content = compiled_content
     await db.commit()
 
     return HTMLResponse('<span class="text-green-600">✅ Сохранено</span>')

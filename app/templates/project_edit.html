@@ -46,7 +46,7 @@
 
 </script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    function initToastEditor() {
         const editorContainer = document.getElementById('editor-container');
         const hiddenInput = document.getElementById('compiled_content');
 
@@ -70,6 +70,17 @@
                 customHTMLRenderer: {}
             });
             window.editorInstance = editor;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initToastEditor();
+    });
+
+    document.body.addEventListener('htmx:afterSwap', function(evt) {
+        if (evt.detail.target.querySelector('#editor-container') ||
+            document.getElementById('editor-container')) {
+            initToastEditor();
         }
     });
 

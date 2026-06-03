@@ -19,6 +19,7 @@ class GigaChatProvider(BaseLLMProvider):
         self._client = GigaChat(
             credentials=api_key,
             verify_ssl_certs=True,
+            # model="GigaChat-2-Pro",
             ca_bundle_file=str(Path(__file__).parent.parent.parent / "certs" / "russian_trusted_root_ca_pem.crt")
         )
 
@@ -35,14 +36,12 @@ class GigaChatProvider(BaseLLMProvider):
         if prompt:
             prompt_text.append(f"Пользовательский запрос: {prompt}\n")
         if file_content:
-            prompt_text.append(f"Содержимое файла:\n---\n{file_content}\n---")
+            prompt_text.append(f"Содержимое файла:\n---\n{parsed_file_content}\n---")
         response = self._client.chat(Chat(messages=[
             Messages(role=MessagesRole.SYSTEM, content=SYSTEM_PROMPT_CREATE_PLAN),
             Messages(role=MessagesRole.USER, content=''.join(prompt_text))
         ], temperature=0.2))
-        print(parsed_file_content)
         data = json.loads(response.choices[0].message.content)
-        print(data)
         if data.get("error"):
             raise ValueError(data["message"])
         return PlanGenerationResult(
